@@ -138,6 +138,39 @@ void PrintObject::make_perimeters()
     m_print->set_status(15, L("Generating walls"));
     BOOST_LOG_TRIVIAL(info) << "Generating walls..." << log_memory_info();
 
+    // Make overhang printable
+    BOOST_LOG_TRIVIAL(info) << "Make overhang printable...";
+    const double angle_radians = 62. * M_PI / 180.;
+    const double maxHoleArea = 0.;
+    const double tan_angle = tan(angle_radians); // the XY-component of the angle
+    BOOST_LOG_TRIVIAL(info) << "angle " << angle_radians << " maxHoleArea " << maxHoleArea << " tan_angle " << tan_angle;
+    const coord_t layer_thickness = m_config.layer_height.value * 100.;
+    coord_t max_dist_from_lower_layer = tan_angle * layer_thickness; // max dist which can be bridged
+    BOOST_LOG_TRIVIAL(info) << "layer_thickness " << layer_thickness << " max_dist_from_lower_layer "
+                            << max_dist_from_lower_layer;
+
+    for (size_t region_id = 0; region_id < this->num_printing_regions(); ++region_id) {
+        const PrintRegion &region = this->printing_region(region_id);
+        BOOST_LOG_TRIVIAL(info) << "Make overhang printable for region " << region_id << " - start";
+        for (size_t layer_nr = m_layers.size() - 2; layer_nr >= 1; layer_nr--) {
+            m_print->throw_if_canceled();
+            LayerRegion &layer = *m_layers[layer_nr]->get_region(region_id);
+            const LayerRegion &layer_above = *m_layers[layer_nr + 1]->get_region(region_id);
+
+            if (std::abs(max_dist_from_lower_layer) < 5) {
+                BOOST_LOG_TRIVIAL(info) << "max_dist_from_lower_layer < 5";
+            } else {
+                const Polygons above = to_polygons(layer_above.slices.surfaces);
+                BOOST_LOG_TRIVIAL(info) << "Current layer surface count: " << layer.slices.surfaces.size();
+                Polygons above_offset = offset(above, -max_dist_from_lower_layer);
+                // And now union with offset of the resulting above layer
+                polygons_append(to_polygons(layer.slices.surfaces), above_offset);
+            }
+      }
+      m_print->throw_if_canceled();
+      BOOST_LOG_TRIVIAL(info) << "Make overhang printable for region " << region_id << " - end";
+    }
+
     // Revert the typed slices into untyped slices.
     if (m_typed_slices) {
         for (Layer *layer : m_layers) {

@@ -732,6 +732,7 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionFloat,                sparse_infill_line_width))
     ((ConfigOptionPercent,              infill_wall_overlap))
     ((ConfigOptionFloat,                sparse_infill_speed))
+    ((ConfigOptionBool,                 make_overhang_printable))
     //BBS
     ((ConfigOptionBool, infill_combination))
     // Ironing options
